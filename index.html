@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
+    <title>حافظة سكريبتات Lua</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 50%, #0f172a 100%);
+            min-height: 100vh;
+            padding: clamp(10px, 2vw, 20px);
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(circle at 20% 50%, rgba(74, 144, 226, 0.1) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .container {
+            max-width: min(1400px, 95%);
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
+            width: 100%;
+        }
+
+        /* الهيدر - متجاوب */
+        .header {
+            background: rgba(255, 255, 255, 0.98);
+            padding: clamp(15px, 3vw, 25px) clamp(20px, 4vw, 30px);
+            border-radius: clamp(20px, 3vw, 30px);
+            margin-bottom: clamp(20px, 3vh, 30px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4), 0 0 0 2px rgba(74,144,226,0.3);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.1);
+            position: relative;
+            z-index: 100;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .header h1 {
+            color: #0a0a0f;
+            font-size: clamp(20px, 4vw, 32px);
+            display: flex;
+            align-items: center;
+            gap: clamp(8px, 2vw, 15px);
+            background: linear-gradient(135deg, #4a90e2, #7c3aed);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .header h1 span {
+            background: linear-gradient(135deg, #4a90e2 0%, #7c3aed 100%);
+            padding: clamp(8px, 1.5vw, 10px);
+            border-radius: 50%;
+            font-size: clamp(20px, 3vw, 28px);
+            -webkit-text-fill-color: white;
+            box-shadow: 0 5px 15px rgba(74,144,226,0.4);
+        }
+
+        .header-controls {
+            display: flex;
+            gap: clamp(10px, 2vw, 15px);
+            align-items: center;
+            position: relative;
+            z-index: 1000;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+
+        /* قائمة اللغة - متجاوبة */
+        .language-selector {
+            position: relative;
+            z-index: 2000;
+        }
+
+        .lang-btn {
+            background: linear-gradient(135deg, #4a90e2 0%, #7c3aed 100%);
+            color: white;
+            border: none;
+            padding: clamp(10px, 2vw, 12px) clamp(15px, 3vw, 25px);
+            border-radius: 50px;
+            font-size: clamp(14px, 2.5vw, 16px);
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: clamp(5px, 1.5vw, 10px);
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 20px rgba(74, 144, 226, 0.4);
+            border: 1px solid rgba(255,255,255,0.2);
+            white-space: nowrap;
+        }
+
+        .lang-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(124, 58, 237, 0.6);
+        }
+
+        .lang-dropdown {
+            position: absolute;
+            top: calc(100% + 10px);
+            left: 0;
+            right: 0;
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3), 0 0 0 2px #4a90e2;
+            display: none;
+            overflow: hidden;
+            z-index: 2001;
+            min-width: 180px;
+            width: 100%;
+        }
+
+        .language-selector.active .lang-dropdown {
+            display: block;
+            animation: slideDown 0.3s ease;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-15px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .lang-option {
+            padding: clamp(12px, 2vh, 15px) clamp(15px, 2vw, 20px);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: all 0.3s;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+            font-size: clamp(14px, 2.5vw, 16px);
+        }
+
+        .lang-option:last-child {
+            border-bottom: none;
+        }
+
+        .lang-option:hover {
+            background: linear-gradient(135deg, #4a90e2 0%, #7c3aed 100%);
+            color: white;
+        }
+
+        .lang-option.active {
+            background: rgba(74,144,226,0.1);
+            color: #4a90e2;
+            font-weight: 600;
+        }
+
+        .add-btn {
+            background: linear-gradient(135deg, #4a90e2 0%, #7c3aed 100%);
+            color: white;
+            border: none;
+            width: clamp(50px, 8vw, 60px);
+            height: clamp(50px, 8vw, 60px);
+            border-radius: 50%;
+            font-size: clamp(28px, 5vw, 36px);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 20px rgba(74, 144, 226, 0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .add-btn:hover {
+            transform: rotate(90deg) scale(1.1);
+            box-shadow: 0 10px 30px rgba(124, 58, 237, 0.6);
+        }
+
+        /* نافذة الإضافة - متجاوبة */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            backdrop-filter: blur(10px);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+            padding: clamp(10px, 3vw, 20px);
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: rgba(255, 255, 255, 0.98);
+            padding: clamp(20px, 5vw, 40px);
+            border-radius: clamp(20px, 4vw, 30px);
+            width: min(90%, 700px);
+            max-width: 700px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 30px 60px rgba(0,0,0,0.5), 0 0 0 3px #4a90e2;
+            animation: modalSlide 0.4s ease;
+        }
+
+        @keyframes modalSlide {
+            from {
+                transform: scale(0.9) translateY(-30px);
+                opacity: 0;
+            }
+            to {
+                transform: scale(1) translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .modal-content h2 {
+            color: #0a0a0f;
+            margin-bottom: clamp(15px, 3vh, 25px);
+            font-size: clamp(22px, 4vw, 28px);
+            border-bottom: 4px solid #4a90e2;
+            padding-bottom: clamp(10px, 2vh, 15px);
+            background: linear-gradient(135deg, #4a90e2, #7c3aed);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .input-group {
+            margin-bottom: clamp(15px, 3vh, 25px);
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: clamp(5px, 1vh, 10px);
+            color: #333;
+            font-weight: 600;
+            font-size: clamp(14px, 2.5vw, 18px);
+        }
+
+        .input-group input,
+        .input-group textarea {
+            width: 100%;
+            padding: clamp(12px, 2vh, 15px) clamp(15px, 2vw, 20px);
+            border: 2px solid #e1e1e1;
+            border-radius: clamp(10px, 2vw, 15px);
+            font-size: clamp(14px, 2.5vw, 16px);
+            transition: all 0.3s;
+            background: #f8f9fa;
+        }
+
+        .input-group input:focus,
+        .input-group textarea:focus {
+            outline: none;
+            border-color: #4a90e2;
+            box-shadow: 0 0 0 4px rgba(74,144,226,0.2);
+            background: white;
+        }
+
+        .input-group textarea {
+            height: clamp(150px, 30vh, 250px);
+            resize: vertical;
+            font-family: 'Courier New', monospace;
+            direction: ltr;
+            text-align: left;
+            font-size: clamp(12px, 2vw, 14px);
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: clamp(10px, 2vw, 15px);
+            justify-content: flex-end;
+            flex-wrap: wrap;
+        }
+
+        .save-btn, .cancel-btn {
+            padding: clamp(12px, 2vh, 15px) clamp(20px, 4vw, 30px);
+            border: none;
+            border-radius: clamp(10px, 2vw, 15px);
+            font-size: clamp(14px, 2.5vw, 18px);
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            flex: 0 1 auto;
+        }
+
+        .save-btn {
+            background: linear-gradient(135deg, #4a90e2 0%, #7c3aed 100%);
+            color: white;
+            box-shadow: 0 5px 15px rgba(74,144,226,0.4);
+        }
+
+        .save-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(124, 58, 237, 0.5);
+        }
+
+        .cancel-btn {
+            background: #e1e1e1;
+            color: #333;
+        }
+
+        .cancel-btn:hover {
+            background: #d1d1d1;
+            transform: translateY(-3px);
+        }
+
+        /* شبكة السكريبتات - متجاوبة بالكامل */
+        .scripts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 350px), 1fr));
+            gap: clamp(15px, 3vw, 25px);
+            margin-top: 20px;
+            position: relative;
+            z-index: 1;
+            width: 100%;
+        }
+
+        .script-card {
+            background: rgba(255, 255, 255, 0.97);
+            border-radius: clamp(15px, 3vw, 25px);
+            padding: clamp(15px, 3vw, 20px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            transition: all 0.3s ease;
+            border: 1px solid rgba(255,255,255,0.2);
+            backdrop-filter: blur(10px);
+            width: 100%;
+            height: fit-content;
+        }
+
+        .script-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(0,0,0,0.3), 0 0 0 2px #4a90e2;
+        }
+
+        .script-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #4a90e2;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .script-header h3 {
+            color: #0a0a0f;
+            font-size: clamp(16px, 3vw, 20px);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: min(200px, 60%);
+        }
+
+        .script-actions {
+            display: flex;
+            gap: clamp(8px, 1.5vw, 10px);
+        }
+
+        .copy-btn, .delete-btn {
+            background: none;
+            border: none;
+            font-size: clamp(18px, 3vw, 20px);
+            cursor: pointer;
+            transition: all 0.3s;
+            padding: clamp(5px, 1vw, 8px);
+            border-radius: 10px;
+            width: clamp(35px, 6vw, 40px);
+            height: clamp(35px, 6vw, 40px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .copy-btn {
+            color: #4a90e2;
+            background: rgba(74,144,226,0.1);
+        }
+
+        .copy-btn:hover {
+            background: #4a90e2;
+            color: white;
+        }
+
+        .delete-btn {
+            color: #e74c3c;
+            background: rgba(231,76,60,0.1);
+        }
+
+        .delete-btn:hover {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .code-preview {
+            background: #0a0a0f;
+            color: #4a90e2;
+            padding: clamp(12px, 2vh, 15px);
+            border-radius: 12px;
+            font-family: 'Courier New', monospace;
+            font-size: clamp(12px, 2vw, 13px);
+            max-height: min(200px, 30vh);
+            overflow-y: auto;
+            white-space: pre-wrap;
+            direction: ltr;
+            text-align: left;
+            border: 2px solid #4a90e2;
+            word-break: break-word;
+        }
+
+        .script-date {
+            margin-top: 12px;
+            font-size: clamp(11px, 2vw, 12px);
+            color: #666;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            flex-wrap: wrap;
+        }
+
+        /* حالة فارغة - متجاوبة */
+        .empty-state {
+            text-align: center;
+            padding: clamp(30px, 8vh, 60px) clamp(15px, 5vw, 20px);
+            background: rgba(255,255,255,0.95);
+            border-radius: clamp(20px, 4vw, 30px);
+            grid-column: 1 / -1;
+            border: 2px dashed #4a90e2;
+        }
+
+        .empty-state div {
+            font-size: clamp(60px, 15vw, 80px);
+            margin-bottom: clamp(10px, 3vh, 15px);
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .empty-state p {
+            color: #666;
+            font-size: clamp(16px, 3vw, 18px);
+            margin-bottom: 10px;
+        }
+
+        .empty-state p:last-child {
+            font-size: clamp(13px, 2.5vw, 14px);
+        }
+
+        /* تذييل - متجاوب */
+        .footer {
+            text-align: center;
+            margin-top: clamp(30px, 5vh, 40px);
+            color: rgba(255,255,255,0.8);
+            font-size: clamp(14px, 2.5vw, 16px);
+            padding: clamp(15px, 3vh, 20px);
+            border-top: 2px solid rgba(74,144,226,0.3);
+            position: relative;
+            background: rgba(0,0,0,0.2);
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            width: 100%;
+        }
+
+        .footer p {
+            background: linear-gradient(135deg, #4a90e2, #7c3aed);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-weight: bold;
+            font-size: clamp(14px, 2.5vw, 16px);
+            word-break: break-word;
+        }
+
+        /* تحسينات للشاشات الصغيرة */
+        @media (max-width: 480px) {
+            .header {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .header h1 {
+                justify-content: center;
+                text-align: center;
+            }
+            
+            .header-controls {
+                justify-content: center;
+            }
+            
+            .language-selector {
+                width: 100%;
+            }
+            
+            .lang-btn {
+                width: 100%;
+                justify-content: center;
+            }
+            
+            .modal-buttons {
+                flex-direction: column;
+            }
+            
+            .save-btn, .cancel-btn {
+                width: 100%;
+            }
+        }
+
+        /* تحسينات للشاشات المتوسطة */
+        @media (min-width: 481px) and (max-width: 768px) {
+            .scripts-grid {
+                grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            }
+        }
+
+        /* تحسينات للشاشات الكبيرة */
+        @media (min-width: 1400px) {
+            .container {
+                max-width: 1600px;
+            }
+            
+            .scripts-grid {
+                grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            }
+        }
+
+        /* تحسينات للوضع الأفقي على الجوال */
+        @media (max-height: 600px) and (orientation: landscape) {
+            .modal-content {
+                max-height: 85vh;
+            }
+            
+            .input-group textarea {
+                height: 120px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- الهيدر -->
+        <div class="header">
+            <h1>
+                <span>📜</span>
+                <span class="lang-text" data-ar="حافظة سكريبتات Lua" data-en="Lua Scripts Keeper">حافظة سكريبتات Lua</span>
+            </h1>
+            
+            <div class="header-controls">
+                <!-- قائمة اللغة -->
+                <div class="language-selector" id="langSelector">
+                    <button class="lang-btn" onclick="toggleLanguageDropdown()">
+                        <span id="currentLangFlag">🇸🇦</span>
+                        <span id="currentLangText">العربية</span>
+                        <span>▼</span>
+                    </button>
+                    <div class="lang-dropdown" id="langDropdown">
+                        <div class="lang-option active" onclick="changeLanguage('ar')">
+                            <span>🇸🇦</span>
+                            <span>العربية</span>
+                        </div>
+                        <div class="lang-option" onclick="changeLanguage('en')">
+                            <span>🇬🇧</span>
+                            <span>English</span>
+                        </div>
+                    </div>
+                </div>
+
+                <button class="add-btn" onclick="openModal()" title="إضافة سكريبت جديد">+</button>
+            </div>
+        </div>
+
+        <!-- نافذة الإضافة -->
+        <div class="modal" id="modal">
+            <div class="modal-content">
+                <h2 class="lang-text" data-ar="➕ إضافة سكريبت جديد" data-en="➕ Add New Script">➕ إضافة سكريبت جديد</h2>
+                <div class="input-group">
+                    <label class="lang-text" data-ar="📝 اسم السكريبت" data-en="📝 Script Name">📝 اسم السكريبت</label>
+                    <input type="text" id="scriptName" placeholder="مثال: Anti Cheat, Teleport, etc..." maxlength="50">
+                </div>
+                <div class="input-group">
+                    <label class="lang-text" data-ar="💻 كود Lua" data-en="💻 Lua Code">💻 كود Lua</label>
+                    <textarea id="scriptCode" placeholder="-- اكتب كود Lua هنا
+function onPlayerJoin()
+    print('مرحباً باللاعب')
+end"></textarea>
+                </div>
+                <div class="modal-buttons">
+                    <button class="cancel-btn lang-text" data-ar="إلغاء" data-en="Cancel" onclick="closeModal()">إلغاء</button>
+                    <button class="save-btn lang-text" data-ar="💾 حفظ" data-en="💾 Save" onclick="saveScript()">💾 حفظ</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- شبكة السكريبتات -->
+        <div class="scripts-grid" id="scriptsGrid">
+            <!-- السكريبتات ستظهر هنا -->
+        </div>
+
+        <!-- تذييل -->
+        <div class="footer">
+            <p class="lang-text" 
+               data-ar="حقوق الطبع والنشر محفوظة لـ D3M0N3T3R5 | 2026" 
+               data-en="Copyright © D3M0N3T3R5 | 2026">
+               حقوق الطبع والنشر محفوظة لـ D3M0N3T3R5 | 2026
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // تحميل السكريبتات المحفوظة
+        let scripts = JSON.parse(localStorage.getItem('luaScripts')) || [];
+        
+        // اللغة الحالية
+        let currentLang = localStorage.getItem('language') || 'ar';
+
+        // إغلاق القائمة عند النقر خارجها
+        document.addEventListener('click', function(event) {
+            const selector = document.getElementById('langSelector');
+            if (!selector.contains(event.target)) {
+                selector.classList.remove('active');
+            }
+        });
+
+        // منع إغلاق القائمة عند النقر داخلها
+        document.getElementById('langDropdown').addEventListener('click', function(event) {
+            event.stopPropagation();
+        });
+
+        function toggleLanguageDropdown() {
+            const selector = document.getElementById('langSelector');
+            selector.classList.toggle('active');
+        }
+
+        function changeLanguage(lang) {
+            currentLang = lang;
+            localStorage.setItem('language', lang);
+            
+            document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+            document.documentElement.lang = lang;
+            
+            // تحديث النصوص
+            document.querySelectorAll('.lang-text').forEach(element => {
+                const arText = element.getAttribute('data-ar');
+                const enText = element.getAttribute('data-en');
+                element.textContent = lang === 'ar' ? arText : enText;
+            });
+
+            // تحديث أزرار اللغة
+            const currentLangFlag = document.getElementById('currentLangFlag');
+            const currentLangText = document.getElementById('currentLangText');
+            const langOptions = document.querySelectorAll('.lang-option');
+            
+            if (lang === 'ar') {
+                currentLangFlag.textContent = '🇸🇦';
+                currentLangText.textContent = 'العربية';
+                langOptions[0].classList.add('active');
+                langOptions[1].classList.remove('active');
+                
+                document.getElementById('scriptName').placeholder = 'مثال: Anti Cheat, Teleport, etc...';
+                document.getElementById('scriptCode').placeholder = '-- اكتب كود Lua هنا\nfunction onPlayerJoin()\n    print(\'مرحباً باللاعب\')\nend';
+            } else {
+                currentLangFlag.textContent = '🇬🇧';
+                currentLangText.textContent = 'English';
+                langOptions[0].classList.remove('active');
+                langOptions[1].classList.add('active');
+                
+                document.getElementById('scriptName').placeholder = 'Example: Anti Cheat, Teleport, etc...';
+                document.getElementById('scriptCode').placeholder = '-- Write Lua code here\nfunction onPlayerJoin()\n    print(\'Welcome player\')\nend';
+            }
+
+            document.title = lang === 'ar' ? 'حافظة سكريبتات Lua' : 'Lua Scripts Keeper';
+            displayScripts();
+            document.getElementById('langSelector').classList.remove('active');
+        }
+
+        function displayScripts() {
+            const grid = document.getElementById('scriptsGrid');
+            
+            if (scripts.length === 0) {
+                grid.innerHTML = `
+                    <div class="empty-state">
+                        <div>📦</div>
+                        <p class="lang-text" data-ar="لا توجد سكريبتات محفوظة" data-en="No saved scripts">${currentLang === 'ar' ? 'لا توجد سكريبتات محفوظة' : 'No saved scripts'}</p>
+                        <p style="font-size: clamp(13px, 2.5vw, 14px);" class="lang-text" data-ar="اضغط على زر + لإضافة أول سكريبت" data-en="Click the + button to add your first script">${currentLang === 'ar' ? 'اضغط على زر + لإضافة أول سكريبت' : 'Click the + button to add your first script'}</p>
+                    </div>
+                `;
+                return;
+            }
+
+            grid.innerHTML = scripts.map((script, index) => `
+                <div class="script-card">
+                    <div class="script-header">
+                        <h3 title="${script.name}">📌 ${script.name}</h3>
+                        <div class="script-actions">
+                            <button class="copy-btn" onclick="copyScript(${index})" title="${currentLang === 'ar' ? 'نسخ الكود' : 'Copy code'}">📋</button>
+                            <button class="delete-btn" onclick="deleteScript(${index})" title="${currentLang === 'ar' ? 'حذف' : 'Delete'}">🗑️</button>
+                        </div>
+                    </div>
+                    <div class="code-preview">${escapeHtml(script.code.substring(0, 200))}${script.code.length > 200 ? '...' : ''}</div>
+                    <div class="script-date">
+                        <span>🕒</span>
+                        <span>${script.date || (currentLang === 'ar' ? 'تاريخ غير معروف' : 'Unknown date')}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function openModal() {
+            document.getElementById('modal').classList.add('active');
+            document.getElementById('scriptName').value = '';
+            document.getElementById('scriptCode').value = '';
+            document.getElementById('scriptName').focus();
+        }
+
+        function closeModal() {
+            document.getElementById('modal').classList.remove('active');
+        }
+
+        function saveScript() {
+            const name = document.getElementById('scriptName').value.trim();
+            const code = document.getElementById('scriptCode').value.trim();
+
+            if (!name) {
+                alert(currentLang === 'ar' ? 'الرجاء إدخال اسم السكريبت' : 'Please enter script name');
+                return;
+            }
+
+            if (!code) {
+                alert(currentLang === 'ar' ? 'الرجاء إدخال كود السكريبت' : 'Please enter script code');
+                return;
+            }
+
+            scripts.push({
+                name: name,
+                code: code,
+                date: new Date().toLocaleString(currentLang === 'ar' ? 'ar-EG' : 'en-US', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                })
+            });
+
+            localStorage.setItem('luaScripts', JSON.stringify(scripts));
+            displayScripts();
+            closeModal();
+        }
+
+        function copyScript(index) {
+            navigator.clipboard.writeText(scripts[index].code).then(() => {
+                alert(currentLang === 'ar' ? '✅ تم نسخ الكود بنجاح' : '✅ Code copied successfully');
+            }).catch(() => {
+                alert(currentLang === 'ar' ? '❌ فشل النسخ' : '❌ Copy failed');
+            });
+        }
+
+        function deleteScript(index) {
+            const confirmMsg = currentLang === 'ar' ? 'هل أنت متأكد من حذف هذا السكريبت؟' : 'Are you sure you want to delete this script?';
+            if (confirm(confirmMsg)) {
+                scripts.splice(index, 1);
+                localStorage.setItem('luaScripts', JSON.stringify(scripts));
+                displayScripts();
+            }
+        }
+
+        window.onclick = function(event) {
+            const modal = document.getElementById('modal');
+            if (event.target === modal) {
+                closeModal();
+            }
+        }
+
+        // تهيئة اللغة
+        changeLanguage(currentLang);
+        displayScripts();
+
+        // إضافة مستمع لتغيير حجم الشاشة
+        window.addEventListener('resize', function() {
+            // إعادة حساب أي عناصر ديناميكية إذا لزم الأمر
+        });
+    </script>
+</body>
+</html>
